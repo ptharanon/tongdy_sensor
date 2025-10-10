@@ -155,6 +155,6 @@ This captures the exact versions currently installed for reproducible deployment
 
 ## Additional Resources
 
-- [MOCK_SENSOR_GUIDE.md](MOCK_SENSOR_GUIDE.md) - Complete guide to mock sensors
-- [QUICK_TEST_GUIDE.md](QUICK_TEST_GUIDE.md) - Testing instructions
+- [MOCK_SENSOR_GUIDE.md](./documentation/MOCK_SENSOR_GUIDE.md) - Complete guide to mock sensors
+- [QUICK_TEST_GUIDE.md](./documentation/QUICK_TEST_GUIDE.md) - Testing instructions
 - [README.md](README.md) - Project overview
