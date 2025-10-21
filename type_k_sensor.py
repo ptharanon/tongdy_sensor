@@ -58,7 +58,7 @@ class TypeKSensor:
     def __init__(self,
                  sensor_address: int, 
                  port: str = "/dev/ttyUSB0",
-                 baudrate: int = 115200,
+                 baudrate: int = 19200,
                  timeout: float = 1.5,
                  is_VOC: bool = False,
                  pre_delay: float = 0.03):
