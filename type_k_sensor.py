@@ -53,19 +53,19 @@ class RS485BusManager:
         return _Ctx()
 
 
-# MARK: TONGDY SENSOR CLASS
-class TongdySensor:
+# MARK: TYPE K SENSOR CLASS
+class TypeKSensor:
     def __init__(self,
                  sensor_address: int, 
                  port: str = "/dev/ttyUSB0",
-                 baudrate: int = 19200,
+                 baudrate: int = 115200,
                  timeout: float = 1.5,
                  is_VOC: bool = False,
                  pre_delay: float = 0.03):
 
         self.sensor_id = sensor_address
         self.sensor_address = sensor_address
-        self.sensor_type = "tongdy"
+        self.sensor_type = "type_k"
         self.is_VOC = is_VOC
         self.pre_delay = pre_delay
         self.max_retries = 3    # maximum number of retries for reading
@@ -83,10 +83,10 @@ class TongdySensor:
             self.instrument.clear_buffers_before_each_transaction = True
             self.instrument.close_port_after_each_call = False
 
-            logger.info(f"Tongdy sensor connected on port {port} with address {sensor_address}")
+            logger.info(f"Type K sensor connected on port {port} with address {sensor_address}")
 
         except Exception as e:
-            logger.exception(f"Failed to initialize Tongdy sensor on port {port} with address {sensor_address}: {e}")
+            logger.exception(f"Failed to initialize Type K sensor on port {port} with address {sensor_address}: {e}")
             self.instrument = None
 
     def read_values(self) -> dict:
@@ -94,9 +94,11 @@ class TongdySensor:
         Return a dictionary with CO2, temperature, and humidity readings.
         Returns:
         {
-            "co2": int,          # CO2 concentration in ppm
-            "temperature": float, # Temperature in °C 2 digit
-            "humidity": float     # Relative Humidity in % 2 digit
+            "co2": 0,               # No CO2 reading for Type K sensor
+            "temperature": float,   # Temperature in °C 1 digit
+            "humidity": 0.0         # No Humidity reading for Type K sensor
+            "sensor_id": int,       # Sensor ID
+            "sensor_type": "type_k" # Sensor type
         }
         """
 
@@ -110,27 +112,20 @@ class TongdySensor:
             try:
                 with RS485BusManager.access(self.instrument.serial.port, self.pre_delay):
 
-                    co2 = self.instrument.read_float(
-                        registeraddress=self.MODBUS_ADDRESS["ADDR_CO2"],
-                        functioncode=self.MODBUS_ADDRESS["FUNCTION_CODE"],
-                        number_of_registers=2)
+                    co2 = 0
 
-                    temperature = self.instrument.read_float(
+                    temperature = self.instrument.read_register(
                         registeraddress=self.MODBUS_ADDRESS["ADDR_TEMP"],
-                        functioncode=self.MODBUS_ADDRESS["FUNCTION_CODE"],
-                        number_of_registers=2)
+                        functioncode=self.MODBUS_ADDRESS["FUNCTION_CODE"])
 
-                    humidity = self.instrument.read_float(
-                        registeraddress=self.MODBUS_ADDRESS["ADDR_HUMID"],
-                        functioncode=self.MODBUS_ADDRESS["FUNCTION_CODE"],
-                        number_of_registers=2)
+                    humidity = 0
 
                 logger.info(f"Sensor {self.sensor_id} Readings -")
                 logger.info(f"CO2: {co2} ppm, Temperature: {temperature} °C, Humidity: {humidity} %")
 
                 return {
                     "co2": round(co2, 2),
-                    "temperature": round(temperature, 2),
+                    "temperature": round(temperature/10, 2),
                     "humidity": round(humidity, 2),
                     "sensor_id": self.sensor_id,
                     "sensor_type": self.sensor_type
@@ -148,14 +143,14 @@ class TongdySensor:
         if is_VOC:
             return {
                 "ADDR_CO2": 0,
-                "ADDR_TEMP": 4,
-                "ADDR_HUMID": 6,
-                "FUNCTION_CODE": 4
+                "ADDR_TEMP": 0,
+                "ADDR_HUMID": 0,
+                "FUNCTION_CODE": 3
             }
         else:
             return {
                 "ADDR_CO2": 0,
-                "ADDR_TEMP": 2,
-                "ADDR_HUMID": 4,
-                "FUNCTION_CODE": 4
+                "ADDR_TEMP": 0,
+                "ADDR_HUMID": 0,
+                "FUNCTION_CODE": 3
             }

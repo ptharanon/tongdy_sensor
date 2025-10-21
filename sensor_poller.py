@@ -9,8 +9,10 @@ from queue import Queue
 
 try:
     from .tongdy_sensor import TongdySensor
+    from .type_k_sensor import TypeKSensor
 except ImportError:
     from tongdy_sensor import TongdySensor
+    from type_k_sensor import TypeKSensor
 
 # Configure logging
 logging.basicConfig(
@@ -34,8 +36,10 @@ class SensorPoller:
 
         self.sensors = [
             TongdySensor(sensor_address=2, port=port, is_VOC=True),
-            TongdySensor(sensor_address=3, port=port, is_VOC=False)
+            TongdySensor(sensor_address=3, port=port, is_VOC=False),
+            TypeKSensor(sensor_address=51, port=port)
         ]
+
         self.polling_interval = polling_interval
         self.polling_jitter = polling_jitter
         self.ui_queue = ui_queue
