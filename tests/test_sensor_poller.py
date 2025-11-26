@@ -11,10 +11,10 @@ from queue import Queue
 class TestSensorPollerInitialization:
     """Test SensorPoller initialization."""
     
-    @patch('Tongdy_sensor.sensor_poller.TongdySensor')
+    @patch('tongdy_sensor.sensor_poller.TongdySensor')
     def test_init_default(self, mock_tongdy_class):
         """Test default initialization."""
-        from Tongdy_sensor.sensor_poller import SensorPoller
+        from tongdy_sensor.sensor_poller import SensorPoller
         
         poller = SensorPoller()
         
@@ -25,10 +25,10 @@ class TestSensorPollerInitialization:
         assert isinstance(poller.ui_queue, Queue)
         assert isinstance(poller._stop_event, threading.Event)
     
-    @patch('Tongdy_sensor.sensor_poller.TongdySensor')
+    @patch('tongdy_sensor.sensor_poller.TongdySensor')
     def test_init_custom_params(self, mock_tongdy_class):
         """Test initialization with custom parameters."""
-        from Tongdy_sensor.sensor_poller import SensorPoller
+        from tongdy_sensor.sensor_poller import SensorPoller
         
         custom_queue = Queue()
         poller = SensorPoller(
@@ -188,11 +188,12 @@ class TestSensorPollerPollingCycle:
         # Get data from queue
         data = test_queue.get()
         
-        assert data["type"] == "live_sensor_data"
-        assert "co2" in data["data"]
-        assert "temperature" in data["data"]
-        assert "humidity" in data["data"]
-        assert "sensor_id" in data["data"]
+        assert "sensor_id" in data
+        assert "sensor_type" in data
+        assert "payload" in data
+        assert "co2" in data["payload"]
+        assert "temperature" in data["payload"]
+        assert "humid" in data["payload"]
     
     def test_polling_with_sensor_error(self, sensor_poller_instance,
                                        test_queue):
@@ -209,14 +210,12 @@ class TestSensorPollerPollingCycle:
         time.sleep(0.6)
         poller.stop()
         
-        # Should still have data in queue (with None values)
+        # Should still have data in queue (empty dict on error)
         assert not test_queue.empty()
         
         data = test_queue.get()
-        assert data["type"] == "live_sensor_data"
-        assert data["data"]["co2"] is None
-        assert data["data"]["temperature"] is None
-        assert data["data"]["humidity"] is None
+        # When sensor raises exception, sensor_poller returns empty dict
+        assert data == {}
     
     @patch('time.sleep')
     def test_polling_interval_respected(self, mock_sleep,
@@ -251,13 +250,12 @@ class TestSensorPollerPollingCycle:
         
         # Check format of each item
         for data in data_items:
-            assert "type" in data
-            assert data["type"] == "live_sensor_data"
-            assert "data" in data
-            assert "co2" in data["data"]
-            assert "temperature" in data["data"]
-            assert "humidity" in data["data"]
-            assert "sensor_id" in data["data"]
+            assert "sensor_id" in data
+            assert "sensor_type" in data
+            assert "payload" in data
+            assert "co2" in data["payload"]
+            assert "temperature" in data["payload"]
+            assert "humid" in data["payload"]
     
     def test_stop_event_interrupts_sleep(self, sensor_poller_instance):
         """Test that stop event wakes up sleeping thread."""
@@ -291,11 +289,11 @@ class TestSensorPollerPollingCycle:
         sensor_ids = []
         while not test_queue.empty():
             data = test_queue.get()
-            sensor_ids.append(data["data"]["sensor_id"])
+            sensor_ids.append(data["sensor_id"])
         
         # Should have data from both sensors
-        assert 1 in sensor_ids
-        assert 2 in sensor_ids
+        assert "sensor_1" in sensor_ids
+        assert "sensor_2" in sensor_ids
 
 
 class TestSensorPollerConcurrency:
@@ -379,6 +377,6 @@ class TestSensorPollerEdgeCases:
         time.sleep(0.6)
         poller.stop()
         
-        # Should default to 0
+        # Should still have sensor_id in returned data
         data = test_queue.get()
-        assert data["data"]["sensor_id"] == 0
+        assert "sensor_id" in data

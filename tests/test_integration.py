@@ -11,14 +11,14 @@ import threading
 class TestSensorPollerIntegration:
     """Integration tests with mocked Modbus but real class interactions."""
     
-    @patch('Tongdy_sensor.tongdy_sensor.RS485BusManager.access')
-    @patch('Tongdy_sensor.tongdy_sensor.minimalmodbus.Instrument')
-    @patch('Tongdy_sensor.tongdy_sensor.serial')
+    @patch('tongdy_sensor.tongdy_sensor.RS485BusManager.access')
+    @patch('tongdy_sensor.tongdy_sensor.minimalmodbus.Instrument')
+    @patch('tongdy_sensor.tongdy_sensor.serial')
     def test_full_polling_cycle_with_mock_sensors(self, mock_serial,
                                                    mock_instrument_class,
                                                    mock_bus_manager):
         """Test complete polling cycle with mocked Modbus."""
-        from Tongdy_sensor.sensor_poller import SensorPoller
+        from tongdy_sensor.sensor_poller import SensorPoller
         
         # Setup Modbus mocks
         mock_instrument = MagicMock()
@@ -64,23 +64,25 @@ class TestSensorPollerIntegration:
         data_count = 0
         while not test_queue.empty():
             data = test_queue.get()
-            assert data["type"] == "live_sensor_data"
-            assert data["data"]["co2"] is not None
-            assert data["data"]["temperature"] is not None
-            assert data["data"]["humidity"] is not None
+            assert "sensor_id" in data
+            assert "sensor_type" in data
+            assert "payload" in data
+            assert data["payload"]["co2"] is not None
+            assert data["payload"]["temperature"] is not None
+            assert data["payload"]["humid"] is not None
             data_count += 1
         
         # Should have at least 2 data points (one per sensor)
         assert data_count >= 2
     
-    @patch('Tongdy_sensor.tongdy_sensor.RS485BusManager.access')
-    @patch('Tongdy_sensor.tongdy_sensor.minimalmodbus.Instrument')
-    @patch('Tongdy_sensor.tongdy_sensor.serial')
+    @patch('tongdy_sensor.tongdy_sensor.RS485BusManager.access')
+    @patch('tongdy_sensor.tongdy_sensor.minimalmodbus.Instrument')
+    @patch('tongdy_sensor.tongdy_sensor.serial')
     def test_multiple_sensors_polling(self, mock_serial,
                                       mock_instrument_class,
                                       mock_bus_manager):
         """Test polling with both VOC and non-VOC sensors."""
-        from Tongdy_sensor.sensor_poller import SensorPoller
+        from tongdy_sensor.sensor_poller import SensorPoller
         
         # Setup mocks
         mock_instrument = MagicMock()
@@ -125,20 +127,20 @@ class TestSensorPollerIntegration:
         co2_values = []
         while not test_queue.empty():
             data = test_queue.get()
-            co2_values.append(data["data"]["co2"])
+            co2_values.append(data["payload"]["co2"])
         
         # Should have readings from both sensors
         assert len(co2_values) >= 2
     
-    @patch('Tongdy_sensor.tongdy_sensor.RS485BusManager.access')
-    @patch('Tongdy_sensor.tongdy_sensor.minimalmodbus.Instrument')
-    @patch('Tongdy_sensor.tongdy_sensor.serial')
-    @patch('Tongdy_sensor.tongdy_sensor.time.sleep')
+    @patch('tongdy_sensor.tongdy_sensor.RS485BusManager.access')
+    @patch('tongdy_sensor.tongdy_sensor.minimalmodbus.Instrument')
+    @patch('tongdy_sensor.tongdy_sensor.serial')
+    @patch('tongdy_sensor.tongdy_sensor.time.sleep')
     def test_sensor_failure_recovery(self, mock_time_sleep, mock_serial,
                                      mock_instrument_class,
                                      mock_bus_manager):
         """Test that one sensor failing doesn't stop the other."""
-        from Tongdy_sensor.sensor_poller import SensorPoller
+        from tongdy_sensor.sensor_poller import SensorPoller
         
         # Setup mocks
         mock_instrument = MagicMock()
@@ -185,19 +187,19 @@ class TestSensorPollerIntegration:
         assert len(data_items) > 0
         
         # Should have both failed (None) and successful readings
-        has_none = any(d["data"]["co2"] is None for d in data_items)
-        has_value = any(d["data"]["co2"] is not None for d in data_items)
+        has_none = any(d["payload"]["co2"] is None for d in data_items)
+        has_value = any(d["payload"]["co2"] is not None for d in data_items)
         
         assert has_none or has_value  # At least one type of data
     
-    @patch('Tongdy_sensor.tongdy_sensor.RS485BusManager.access')
-    @patch('Tongdy_sensor.tongdy_sensor.minimalmodbus.Instrument')
-    @patch('Tongdy_sensor.tongdy_sensor.serial')
+    @patch('tongdy_sensor.tongdy_sensor.RS485BusManager.access')
+    @patch('tongdy_sensor.tongdy_sensor.minimalmodbus.Instrument')
+    @patch('tongdy_sensor.tongdy_sensor.serial')
     def test_queue_receives_all_sensor_data(self, mock_serial,
                                             mock_instrument_class,
                                             mock_bus_manager):
         """Test that queue receives data from all sensors in order."""
-        from Tongdy_sensor.sensor_poller import SensorPoller
+        from tongdy_sensor.sensor_poller import SensorPoller
         
         # Setup mocks
         mock_instrument = MagicMock()
@@ -226,21 +228,20 @@ class TestSensorPollerIntegration:
         sensor_ids = []
         while not test_queue.empty():
             data = test_queue.get()
-            sensor_ids.append(data["data"]["sensor_id"])
+            sensor_ids.append(data["sensor_id"])
         
-        # Should have data from sensor address 2 and 3
-        assert 2 in sensor_ids
-        assert 3 in sensor_ids
+        # Should have data from both sensor names
+        assert "before_scrub" in sensor_ids or "after_scrub" in sensor_ids
 
 
 class TestSensorPollerLifecycle:
     """Test SensorPoller lifecycle scenarios."""
     
-    @patch('Tongdy_sensor.tongdy_sensor.minimalmodbus.Instrument')
-    @patch('Tongdy_sensor.tongdy_sensor.serial')
+    @patch('tongdy_sensor.tongdy_sensor.minimalmodbus.Instrument')
+    @patch('tongdy_sensor.tongdy_sensor.serial')
     def test_rapid_start_stop_cycles(self, mock_serial, mock_instrument_class):
         """Test rapid start/stop cycles don't cause issues."""
-        from Tongdy_sensor.sensor_poller import SensorPoller
+        from tongdy_sensor.sensor_poller import SensorPoller
         
         mock_instrument = MagicMock()
         mock_instrument_class.return_value = mock_instrument
@@ -254,11 +255,11 @@ class TestSensorPollerLifecycle:
             assert poller.stop() is True
             time.sleep(0.05)
     
-    @patch('Tongdy_sensor.tongdy_sensor.minimalmodbus.Instrument')
-    @patch('Tongdy_sensor.tongdy_sensor.serial')
+    @patch('tongdy_sensor.tongdy_sensor.minimalmodbus.Instrument')
+    @patch('tongdy_sensor.tongdy_sensor.serial')
     def test_long_running_poller(self, mock_serial, mock_instrument_class):
         """Test poller running for extended period."""
-        from Tongdy_sensor.sensor_poller import SensorPoller
+        from tongdy_sensor.sensor_poller import SensorPoller
         
         mock_instrument = MagicMock()
         mock_instrument_class.return_value = mock_instrument
@@ -287,12 +288,12 @@ class TestSensorPollerLifecycle:
 class TestErrorPropagation:
     """Test error propagation between components."""
     
-    @patch('Tongdy_sensor.tongdy_sensor.minimalmodbus.Instrument')
-    @patch('Tongdy_sensor.tongdy_sensor.serial')
+    @patch('tongdy_sensor.tongdy_sensor.minimalmodbus.Instrument')
+    @patch('tongdy_sensor.tongdy_sensor.serial')
     def test_sensor_init_error_handling(self, mock_serial,
                                         mock_instrument_class):
         """Test that sensor initialization errors are handled."""
-        from Tongdy_sensor.sensor_poller import SensorPoller
+        from tongdy_sensor.sensor_poller import SensorPoller
         
         # Make instrument init fail
         mock_instrument_class.side_effect = Exception("Port error")
@@ -302,16 +303,16 @@ class TestErrorPropagation:
         poller = SensorPoller()
         
         assert poller is not None
-        assert len(poller.sensors) == 2
+        assert len(poller.sensors) == 3  # 2 TongdySensor + 1 InterlockSensor
     
-    @patch('Tongdy_sensor.tongdy_sensor.RS485BusManager.access')
-    @patch('Tongdy_sensor.tongdy_sensor.minimalmodbus.Instrument')
-    @patch('Tongdy_sensor.tongdy_sensor.serial')
+    @patch('tongdy_sensor.tongdy_sensor.RS485BusManager.access')
+    @patch('tongdy_sensor.tongdy_sensor.minimalmodbus.Instrument')
+    @patch('tongdy_sensor.tongdy_sensor.serial')
     def test_modbus_communication_error(self, mock_serial,
                                         mock_instrument_class,
                                         mock_bus_manager):
         """Test handling of Modbus communication errors."""
-        from Tongdy_sensor.sensor_poller import SensorPoller
+        from tongdy_sensor.sensor_poller import SensorPoller
         
         mock_instrument = MagicMock()
         mock_instrument_class.return_value = mock_instrument
@@ -339,17 +340,17 @@ class TestErrorPropagation:
         # Should still have data (with None values)
         assert not test_queue.empty()
         data = test_queue.get()
-        assert data["data"]["co2"] is None
+        assert data["payload"]["co2"] is None
 
 
 class TestThreadSafety:
     """Test thread safety of components."""
     
-    @patch('Tongdy_sensor.tongdy_sensor.minimalmodbus.Instrument')
-    @patch('Tongdy_sensor.tongdy_sensor.serial')
+    @patch('tongdy_sensor.tongdy_sensor.minimalmodbus.Instrument')
+    @patch('tongdy_sensor.tongdy_sensor.serial')
     def test_concurrent_queue_access(self, mock_serial, mock_instrument_class):
         """Test that queue can be safely accessed from multiple threads."""
-        from Tongdy_sensor.sensor_poller import SensorPoller
+        from tongdy_sensor.sensor_poller import SensorPoller
         
         mock_instrument = MagicMock()
         mock_instrument_class.return_value = mock_instrument

@@ -12,9 +12,13 @@ import threading
 def mock_sensor_data_voc():
     """Typical sensor readings for VOC sensor."""
     return {
-        "co2": 450.25,
-        "temperature": 23.5,
-        "humidity": 55.2
+        "sensor_id": "voc_sensor",
+        "sensor_type": "tongdy",
+        "payload": {
+            "co2": 450.25,
+            "temperature": 23.5,
+            "humid": 55.2
+        }
     }
 
 
@@ -22,9 +26,13 @@ def mock_sensor_data_voc():
 def mock_sensor_data_non_voc():
     """Typical sensor readings for non-VOC sensor."""
     return {
-        "co2": 425.0,
-        "temperature": 22.8,
-        "humidity": 58.7
+        "sensor_id": "non_voc_sensor",
+        "sensor_type": "tongdy",
+        "payload": {
+            "co2": 425.0,
+            "temperature": 22.8,
+            "humid": 58.7
+        }
     }
 
 
@@ -32,9 +40,13 @@ def mock_sensor_data_non_voc():
 def mock_sensor_data_extreme():
     """Edge case sensor readings."""
     return {
-        "co2": 5000.0,
-        "temperature": 35.0,
-        "humidity": 95.0
+        "sensor_id": "extreme_sensor",
+        "sensor_type": "tongdy",
+        "payload": {
+            "co2": 5000.0,
+            "temperature": 35.0,
+            "humid": 95.0
+        }
     }
 
 
@@ -42,9 +54,13 @@ def mock_sensor_data_extreme():
 def mock_sensor_data_failed():
     """Failed sensor readings."""
     return {
-        "co2": None,
-        "temperature": None,
-        "humidity": None
+        "sensor_id": "failed_sensor",
+        "sensor_type": "tongdy",
+        "payload": {
+            "co2": None,
+            "temperature": None,
+            "humid": None
+        }
     }
 
 
@@ -82,10 +98,15 @@ def mock_tongdy_sensor():
     mock_sensor.sensor_id = 1
     mock_sensor.sensor_address = 1
     mock_sensor.is_VOC = False
+    mock_sensor.name = "sensor_1"
     mock_sensor.read_values = MagicMock(return_value={
-        "co2": 400.0,
-        "temperature": 22.0,
-        "humidity": 50.0
+        "sensor_id": "sensor_1",
+        "sensor_type": "tongdy",
+        "payload": {
+            "co2": 400.0,
+            "temperature": 22.0,
+            "humid": 50.0
+        }
     })
     return mock_sensor
 
@@ -97,10 +118,15 @@ def mock_tongdy_sensor_voc():
     mock_sensor.sensor_id = 2
     mock_sensor.sensor_address = 2
     mock_sensor.is_VOC = True
+    mock_sensor.name = "sensor_2"
     mock_sensor.read_values = MagicMock(return_value={
-        "co2": 450.0,
-        "temperature": 23.5,
-        "humidity": 55.0
+        "sensor_id": "sensor_2",
+        "sensor_type": "tongdy",
+        "payload": {
+            "co2": 450.0,
+            "temperature": 23.5,
+            "humid": 55.0
+        }
     })
     return mock_sensor
 
@@ -126,7 +152,7 @@ def sensor_poller_instance(test_queue, mock_sensor_list):
     Note: This requires patching during import or modifying SensorPoller
     to accept sensors as a parameter.
     """
-    from Tongdy_sensor.sensor_poller import SensorPoller
+    from tongdy_sensor.sensor_poller import SensorPoller
     
     poller = SensorPoller(
         polling_interval=1,
@@ -160,14 +186,14 @@ def cleanup_threads():
 @pytest.fixture
 def patch_minimalmodbus():
     """Patch minimalmodbus module."""
-    with patch('Tongdy_sensor.tongdy_sensor.minimalmodbus') as mock_mm:
+    with patch('tongdy_sensor.tongdy_sensor.minimalmodbus') as mock_mm:
         yield mock_mm
 
 
 @pytest.fixture
 def patch_serial():
     """Patch serial module."""
-    with patch('Tongdy_sensor.tongdy_sensor.serial') as mock_serial:
+    with patch('tongdy_sensor.tongdy_sensor.serial') as mock_serial:
         yield mock_serial
 
 

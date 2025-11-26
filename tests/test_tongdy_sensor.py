@@ -10,11 +10,11 @@ import serial
 class TestTongdySensorInitialization:
     """Test TongdySensor initialization."""
     
-    @patch('Tongdy_sensor.tongdy_sensor.minimalmodbus.Instrument')
-    @patch('Tongdy_sensor.tongdy_sensor.serial')
+    @patch('tongdy_sensor.tongdy_sensor.minimalmodbus.Instrument')
+    @patch('tongdy_sensor.tongdy_sensor.serial')
     def test_init_voc_sensor(self, mock_serial, mock_instrument_class):
         """Test initialization of VOC sensor with correct addresses."""
-        from Tongdy_sensor.tongdy_sensor import TongdySensor
+        from tongdy_sensor.tongdy_sensor import TongdySensor
         
         mock_instrument = MagicMock()
         mock_instrument_class.return_value = mock_instrument
@@ -41,11 +41,11 @@ class TestTongdySensorInitialization:
             slaveaddress=2
         )
     
-    @patch('Tongdy_sensor.tongdy_sensor.minimalmodbus.Instrument')
-    @patch('Tongdy_sensor.tongdy_sensor.serial')
+    @patch('tongdy_sensor.tongdy_sensor.minimalmodbus.Instrument')
+    @patch('tongdy_sensor.tongdy_sensor.serial')
     def test_init_non_voc_sensor(self, mock_serial, mock_instrument_class):
         """Test initialization of non-VOC sensor with correct addresses."""
-        from Tongdy_sensor.tongdy_sensor import TongdySensor
+        from tongdy_sensor.tongdy_sensor import TongdySensor
         
         mock_instrument = MagicMock()
         mock_instrument_class.return_value = mock_instrument
@@ -65,11 +65,11 @@ class TestTongdySensorInitialization:
         assert sensor.MODBUS_ADDRESS["ADDR_HUMID"] == 4
         assert sensor.MODBUS_ADDRESS["FUNCTION_CODE"] == 4
     
-    @patch('Tongdy_sensor.tongdy_sensor.minimalmodbus.Instrument')
-    @patch('Tongdy_sensor.tongdy_sensor.serial')
+    @patch('tongdy_sensor.tongdy_sensor.minimalmodbus.Instrument')
+    @patch('tongdy_sensor.tongdy_sensor.serial')
     def test_init_custom_parameters(self, mock_serial, mock_instrument_class):
         """Test initialization with custom parameters."""
-        from Tongdy_sensor.tongdy_sensor import TongdySensor
+        from tongdy_sensor.tongdy_sensor import TongdySensor
         
         mock_instrument = MagicMock()
         mock_instrument_class.return_value = mock_instrument
@@ -88,11 +88,11 @@ class TestTongdySensorInitialization:
         assert mock_instrument.serial.baudrate == 9600
         assert mock_instrument.serial.timeout == 2.0
     
-    @patch('Tongdy_sensor.tongdy_sensor.minimalmodbus.Instrument')
-    @patch('Tongdy_sensor.tongdy_sensor.serial')
+    @patch('tongdy_sensor.tongdy_sensor.minimalmodbus.Instrument')
+    @patch('tongdy_sensor.tongdy_sensor.serial')
     def test_init_port_failure(self, mock_serial, mock_instrument_class):
         """Test initialization when port connection fails."""
-        from Tongdy_sensor.tongdy_sensor import TongdySensor
+        from tongdy_sensor.tongdy_sensor import TongdySensor
         
         mock_instrument_class.side_effect = Exception("Port not found")
         mock_serial.PARITY_NONE = 'N'
@@ -110,13 +110,13 @@ class TestTongdySensorInitialization:
 class TestTongdySensorReadValues:
     """Test TongdySensor read_values method."""
     
-    @patch('Tongdy_sensor.tongdy_sensor.RS485BusManager.access')
-    @patch('Tongdy_sensor.tongdy_sensor.minimalmodbus.Instrument')
-    @patch('Tongdy_sensor.tongdy_sensor.serial')
+    @patch('tongdy_sensor.tongdy_sensor.RS485BusManager.access')
+    @patch('tongdy_sensor.tongdy_sensor.minimalmodbus.Instrument')
+    @patch('tongdy_sensor.tongdy_sensor.serial')
     def test_read_values_success(self, mock_serial, mock_instrument_class,
                                   mock_bus_manager):
         """Test successful reading of sensor values."""
-        from Tongdy_sensor.tongdy_sensor import TongdySensor
+        from tongdy_sensor.tongdy_sensor import TongdySensor
         
         # Setup mocks
         mock_instrument = MagicMock()
@@ -146,19 +146,21 @@ class TestTongdySensorReadValues:
         sensor = TongdySensor(sensor_address=3, is_VOC=False)
         result = sensor.read_values()
         
-        assert result["co2"] == 450.25
-        assert result["temperature"] == 23.5
-        assert result["humidity"] == 55.2
+        assert result["sensor_id"] == "tongdy"
+        assert result["sensor_type"] == "tongdy"
+        assert result["payload"]["co2"] == 450.25
+        assert result["payload"]["temperature"] == 23.5
+        assert result["payload"]["humid"] == 55.2
     
-    @patch('Tongdy_sensor.tongdy_sensor.RS485BusManager.access')
-    @patch('Tongdy_sensor.tongdy_sensor.minimalmodbus.Instrument')
-    @patch('Tongdy_sensor.tongdy_sensor.serial')
-    @patch('Tongdy_sensor.tongdy_sensor.time.sleep')
+    @patch('tongdy_sensor.tongdy_sensor.RS485BusManager.access')
+    @patch('tongdy_sensor.tongdy_sensor.minimalmodbus.Instrument')
+    @patch('tongdy_sensor.tongdy_sensor.serial')
+    @patch('tongdy_sensor.tongdy_sensor.time.sleep')
     def test_read_values_retry_success(self, mock_sleep, mock_serial,
                                        mock_instrument_class,
                                        mock_bus_manager):
         """Test reading succeeds after retry."""
-        from Tongdy_sensor.tongdy_sensor import TongdySensor
+        from tongdy_sensor.tongdy_sensor import TongdySensor
         
         # Setup mocks
         mock_instrument = MagicMock()
@@ -204,20 +206,20 @@ class TestTongdySensorReadValues:
         sensor = TongdySensor(sensor_address=3, is_VOC=False)
         result = sensor.read_values()
         
-        assert result["co2"] == 400.0
-        assert result["temperature"] == 22.0
-        assert result["humidity"] == 50.0
+        assert result["payload"]["co2"] == 400.0
+        assert result["payload"]["temperature"] == 22.0
+        assert result["payload"]["humid"] == 50.0
         assert mock_sleep.call_count >= 1  # Should have retried
     
-    @patch('Tongdy_sensor.tongdy_sensor.RS485BusManager.access')
-    @patch('Tongdy_sensor.tongdy_sensor.minimalmodbus.Instrument')
-    @patch('Tongdy_sensor.tongdy_sensor.serial')
-    @patch('Tongdy_sensor.tongdy_sensor.time.sleep')
+    @patch('tongdy_sensor.tongdy_sensor.RS485BusManager.access')
+    @patch('tongdy_sensor.tongdy_sensor.minimalmodbus.Instrument')
+    @patch('tongdy_sensor.tongdy_sensor.serial')
+    @patch('tongdy_sensor.tongdy_sensor.time.sleep')
     def test_read_values_all_retries_fail(self, mock_sleep, mock_serial,
                                           mock_instrument_class,
                                           mock_bus_manager):
         """Test reading fails after all retries."""
-        from Tongdy_sensor.tongdy_sensor import TongdySensor
+        from tongdy_sensor.tongdy_sensor import TongdySensor
         
         # Setup mocks
         mock_instrument = MagicMock()
@@ -237,25 +239,25 @@ class TestTongdySensorReadValues:
         sensor = TongdySensor(sensor_address=3, is_VOC=False)
         result = sensor.read_values()
         
-        assert result["co2"] is None
-        assert result["temperature"] is None
-        assert result["humidity"] is None
+        assert result["payload"]["co2"] is None
+        assert result["payload"]["temperature"] is None
+        assert result["payload"]["humid"] is None
         assert mock_sleep.call_count == 3  # max_retries
     
     def test_read_values_no_instrument(self):
         """Test reading when instrument is None."""
-        from Tongdy_sensor.tongdy_sensor import TongdySensor
+        from tongdy_sensor.tongdy_sensor import TongdySensor
         
-        with patch('Tongdy_sensor.tongdy_sensor.minimalmodbus.Instrument') \
+        with patch('tongdy_sensor.tongdy_sensor.minimalmodbus.Instrument') \
                 as mock_inst:
             mock_inst.side_effect = Exception("Init failed")
             
             sensor = TongdySensor(sensor_address=3, is_VOC=False)
             result = sensor.read_values()
             
-            assert result["co2"] is None
-            assert result["temperature"] is None
-            assert result["humidity"] is None
+            assert result["payload"]["co2"] is None
+            assert result["payload"]["temperature"] is None
+            assert result["payload"]["humid"] is None
 
 
 class TestTongdySensorHelperMethods:
@@ -263,9 +265,9 @@ class TestTongdySensorHelperMethods:
     
     def test_get_address_voc(self):
         """Test _get_address for VOC sensor."""
-        from Tongdy_sensor.tongdy_sensor import TongdySensor
+        from tongdy_sensor.tongdy_sensor import TongdySensor
         
-        with patch('Tongdy_sensor.tongdy_sensor.minimalmodbus.Instrument'):
+        with patch('tongdy_sensor.tongdy_sensor.minimalmodbus.Instrument'):
             sensor = TongdySensor(sensor_address=2, is_VOC=True)
             addresses = sensor._get_address(is_VOC=True)
             
@@ -276,9 +278,9 @@ class TestTongdySensorHelperMethods:
     
     def test_get_address_non_voc(self):
         """Test _get_address for non-VOC sensor."""
-        from Tongdy_sensor.tongdy_sensor import TongdySensor
+        from tongdy_sensor.tongdy_sensor import TongdySensor
         
-        with patch('Tongdy_sensor.tongdy_sensor.minimalmodbus.Instrument'):
+        with patch('tongdy_sensor.tongdy_sensor.minimalmodbus.Instrument'):
             sensor = TongdySensor(sensor_address=3, is_VOC=False)
             addresses = sensor._get_address(is_VOC=False)
             
@@ -293,7 +295,7 @@ class TestRS485BusManager:
     
     def test_bus_manager_context(self):
         """Test bus manager context manager."""
-        from Tongdy_sensor.tongdy_sensor import RS485BusManager
+        from tongdy_sensor.tongdy_sensor import RS485BusManager
         
         port = "/dev/test"
         
@@ -304,7 +306,7 @@ class TestRS485BusManager:
     
     def test_bus_manager_thread_safety(self):
         """Test bus manager prevents concurrent access."""
-        from Tongdy_sensor.tongdy_sensor import RS485BusManager
+        from tongdy_sensor.tongdy_sensor import RS485BusManager
         import threading
         import time
         

@@ -49,6 +49,7 @@ class MockTongdySensor:
                  baudrate: int = 19200,
                  timeout: float = 1.5,
                  is_VOC: bool = False,
+                 name: str = None,
                  pre_delay: float = 0.03,
                  # Mock-specific parameters
                  base_co2: float = None,
@@ -80,6 +81,8 @@ class MockTongdySensor:
         self.sensor_id = sensor_address
         self.sensor_address = sensor_address
         self.is_VOC = is_VOC
+        self.name = name
+        self.sensor_type = "tongdy"
         self.pre_delay = pre_delay
         self.max_retries = 3
         self.retry_delay = 0.5
@@ -117,15 +120,25 @@ class MockTongdySensor:
             f"(VOC={is_VOC})"
         )
     
-    def read_values(self) -> Dict[str, Optional[float]]:
+    def read_values(self) -> dict:
         """
         Simulate reading sensor values.
         
         Returns:
-            Dictionary with co2, temperature, and humidity readings,
-            or None values if simulated failure occurs.
+            Dictionary with nested structure:
+            {
+                "sensor_id": str (name),
+                "sensor_type": str,
+                "payload": {"co2": float, "temperature": float, "humid": float}
+            }
         """
         self._read_count += 1
+        
+        data = {
+            "sensor_id": self.name,
+            "sensor_type": self.sensor_type,
+            "payload": {}
+        }
         
         # Simulate random failures
         if random.random() < self.should_fail_probability:
@@ -133,11 +146,8 @@ class MockTongdySensor:
                 f"Mock sensor {self.sensor_id} simulating failure "
                 f"(read #{self._read_count})"
             )
-            return {
-                "co2": None,
-                "temperature": None,
-                "humidity": None
-            }
+            data["payload"] = {"co2": None, "temperature": None, "humid": None}
+            return data
         
         # Simulate read delay
         if self.simulate_delay:
@@ -163,20 +173,21 @@ class MockTongdySensor:
         humidity = max(0, min(100, humidity))
         
         # Round to realistic precision
-        result = {
+        payload = {
             "co2": round(co2, 2),
             "temperature": round(temperature, 2),
-            "humidity": round(humidity, 2)
+            "humid": round(humidity, 2)
         }
         
         logger.info(
             f"Mock sensor {self.sensor_id} readings - "
-            f"CO2: {result['co2']} ppm, "
-            f"Temp: {result['temperature']} °C, "
-            f"Humidity: {result['humidity']} %"
+            f"CO2: {payload['co2']} ppm, "
+            f"Temp: {payload['temperature']} °C, "
+            f"Humidity: {payload['humid']} %"
         )
         
-        return result
+        data["payload"] = payload
+        return data
     
     def _update_values(self):
         """Update internal values with gradual drift."""
@@ -361,3 +372,163 @@ class MockSensorFactory:
             is_VOC=is_VOC,
             **kwargs
         )
+
+
+class MockInterlockSensor:
+    """
+    Mock implementation of InterlockSensor (HLR) for testing.
+
+    Returns the same keys as `InterlockSensor.read_values`:
+      - temperature_before_filter (°C)
+      - fan_speed (%)
+      - duct_temperature (°C)
+      - duct_humidity (%RH)
+      - duct_co2 (ppm)
+      - duct_voc (%LV)
+      - hlr_operation_mode (int)
+    """
+
+    def __init__(self,
+                 sensor_address: int,
+                 port: str = "/dev/ttyUSB0",
+                 baudrate: int = 19200,
+                 timeout: float = 1.5,
+                 pre_delay: float = 0.03,
+                 name: str = None,
+                 noise_level: float = 1.0,
+                 drift_rate: float = 0.05,
+                 should_fail_probability: float = 0.0,
+                 simulate_delay: bool = True):
+
+        self.sensor_id = sensor_address
+        self.sensor_address = sensor_address
+        self.name = name
+        self.sensor_type = "interlock"
+        self.pre_delay = pre_delay
+        self.max_retries = 3
+        self.retry_delay = 0.5
+        self.MODBUS_ADDRESS = {
+            "ADDR_TEMP_BEFORE_FILTER": 0,
+            "ADDR_FAN_SPEED": 2,
+            "ADDR_DUCT_TEMP": 3,
+            "ADDR_DUCT_HUMID": 4,
+            "ADDR_DUCT_CO2": 5,
+            "ADDR_DUCT_VOC": 6,
+            "ADDR_HLR_OPERATION_MODE": 8,
+            "FUNCTION_CODE": 3
+        }
+
+        # Mock "connected"
+        self.instrument = True
+
+        self.noise_level = noise_level
+        self.drift_rate = drift_rate
+        self.should_fail_probability = should_fail_probability
+        self.simulate_delay = simulate_delay
+
+        # Base values
+        self.base_temperature_before = 25.0
+        self.base_fan_speed = 50.0
+        self.base_duct_temperature = 24.5
+        self.base_duct_humidity = 45.0
+        self.base_duct_co2 = 600
+        self.base_duct_voc = 0.0
+        self.base_operation_mode = 1
+
+        # Current values
+        self._temperature_before = self.base_temperature_before
+        self._fan_speed = self.base_fan_speed
+        self._duct_temperature = self.base_duct_temperature
+        self._duct_humidity = self.base_duct_humidity
+        self._duct_co2 = self.base_duct_co2
+        self._duct_voc = self.base_duct_voc
+        self._operation_mode = self.base_operation_mode
+
+        self._read_count = 0
+        self._last_read_time = time.time()
+
+        logger.info(f"Mock Interlock sensor created with address {sensor_address}")
+
+    def read_values(self) -> dict:
+        self._read_count += 1
+
+        data = {
+            "sensor_id": self.name,
+            "sensor_type": self.sensor_type,
+            "payload": {}
+        }
+
+        # Simulate random failure
+        if random.random() < self.should_fail_probability:
+            logger.error(f"Mock interlock {self.sensor_id} simulating failure")
+            data["payload"] = {
+                "temp_before_filter": None,
+                "fan_speed": None,
+                "temperature": None,
+                "humid": None,
+                "co2": None,
+                "voc": None,
+                "operation_mode": None
+            }
+            return data
+
+        if self.simulate_delay:
+            time.sleep(random.uniform(0.01, 0.05))
+
+        self._update_values()
+
+        # Apply noise
+        temp_before = self._add_noise(self._temperature_before, self.noise_level * 0.1)
+        fan = self._add_noise(self._fan_speed, self.noise_level)
+        duct_temp = self._add_noise(self._duct_temperature, self.noise_level * 0.1)
+        duct_hum = self._add_noise(self._duct_humidity, self.noise_level * 0.2)
+        duct_co2 = int(self._add_noise(self._duct_co2, self.noise_level * 5))
+        duct_voc = self._add_noise(self._duct_voc, self.noise_level * 0.1)
+        op_mode = int(self._operation_mode)
+
+        payload = {
+            "temp_before_filter": round(temp_before, 2),
+            "fan_speed": round(fan, 2),
+            "temperature": round(duct_temp, 2),
+            "humid": round(duct_hum, 2),
+            "co2": duct_co2,
+            "voc": round(duct_voc, 2),
+            "operation_mode": op_mode
+        }
+
+        data["payload"] = payload
+        return data
+
+    def _update_values(self):
+        time_since = time.time() - self._last_read_time
+        self._last_read_time = time.time()
+
+        factor = self.drift_rate * time_since
+        self._temperature_before += random.uniform(-0.1, 0.1) * factor
+        self._fan_speed += random.uniform(-1, 1) * factor
+        self._duct_temperature += random.uniform(-0.1, 0.1) * factor
+        self._duct_humidity += random.uniform(-0.5, 0.5) * factor
+        self._duct_co2 += random.uniform(-2, 2) * factor
+        self._duct_voc += random.uniform(-0.05, 0.05) * factor
+
+        # gently move back to base
+        self._temperature_before += (self.base_temperature_before - self._temperature_before) * 0.01
+        self._fan_speed += (self.base_fan_speed - self._fan_speed) * 0.01
+        self._duct_temperature += (self.base_duct_temperature - self._duct_temperature) * 0.01
+        self._duct_humidity += (self.base_duct_humidity - self._duct_humidity) * 0.01
+        self._duct_co2 += (self.base_duct_co2 - self._duct_co2) * 0.01
+
+    def _add_noise(self, value: float, noise_amount: float) -> float:
+        return value + random.uniform(-noise_amount, noise_amount)
+
+    def get_read_count(self) -> int:
+        return self._read_count
+
+    def reset_read_count(self):
+        self._read_count = 0
+
+
+    # Factory helper
+
+def create_mock_interlock(sensor_address: int, **kwargs) -> MockInterlockSensor:
+    return MockInterlockSensor(sensor_address=sensor_address, **kwargs)

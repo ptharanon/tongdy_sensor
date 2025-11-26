@@ -35,7 +35,7 @@ from queue import Queue
 from typing import Literal, List
 
 from sensor_poller import SensorPoller
-from mock_sensor import MockTongdySensor, MockSensorFactory
+from mock_sensor import MockTongdySensor, MockSensorFactory, MockInterlockSensor, create_mock_interlock
 
 logger = logging.getLogger(__name__)
 
@@ -148,6 +148,28 @@ def create_mock_sensors(
             f"(VOC={is_voc}, type={sensor_type})"
         )
     
+    return sensors
+
+
+def create_mock_sensors_with_interlock(
+    sensor_type: str = 'stable',
+    num_sensors: int = 2,
+    use_voc: bool = True,
+    interlock_address: int = 1
+) -> List:
+    """Create mock Tongdy sensors plus a single interlock mock.
+
+    Returns list of tongue sensors (addresses start at 2) and a final
+    MockInterlockSensor at `interlock_address`.
+    """
+    sensors = create_mock_sensors(sensor_type=sensor_type,
+                                  num_sensors=num_sensors,
+                                  use_voc=use_voc)
+
+    # Append interlock
+    interlock = create_mock_interlock(sensor_address=interlock_address,
+                                      simulate_delay=True)
+    sensors.append(interlock)
     return sensors
 
 
