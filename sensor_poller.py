@@ -10,9 +10,11 @@ from queue import Queue
 try:
     from .tongdy_sensor import TongdySensor
     from .type_k_sensor import TypeKSensor
+    from .interlock_sensor import InterlockSensor
 except ImportError:
     from tongdy_sensor import TongdySensor
     from type_k_sensor import TypeKSensor
+    from interlock_sensor import InterlockSensor
 
 # Configure logging
 logging.basicConfig(
@@ -35,9 +37,9 @@ class SensorPoller:
                  ui_queue: Queue = Queue()):
 
         self.sensors = [
-            TongdySensor(sensor_address=2, port=port, is_VOC=True),
-            TongdySensor(sensor_address=3, port=port, is_VOC=False),
-            TypeKSensor(sensor_address=51, port=port)
+            TongdySensor(sensor_address=11, port=port, is_VOC=False, name="before_scrub"),
+            TongdySensor(sensor_address=13, port=port, is_VOC=False, name="after_scrub"),
+            InterlockSensor(sensor_address=1, port=port, name="interlock_4c")
         ]
 
         self.polling_interval = polling_interval
@@ -120,21 +122,9 @@ class SensorPoller:
                 except Exception as e:
                     logger.error(f"Unhandled error reading values from {getattr(s, 'sensor_address', 'Unknown')} : {e}")
                     logger.error(f"Defaulting to empty values for {getattr(s, 'sensor_address', 'Unknown')}")
-                    vals = {"co2": None, "temperature": None, "humidity": None}
+                    vals = {}
 
-                co2 = vals.get("co2")
-                temperature = vals.get("temperature")
-                humidity = vals.get("humidity")
-
-                self.ui_queue.put({
-                    "type": "live_sensor_data",
-                    "data": {
-                        "co2": co2,
-                        "temperature": temperature,
-                        "humidity": humidity,
-                        "sensor_id": s.sensor_id if hasattr(s, "sensor_id") else 0
-                    }
-                })
+                self.ui_queue.put(vals)
 
                 if self.polling_jitter:
                     time.sleep(random.uniform(

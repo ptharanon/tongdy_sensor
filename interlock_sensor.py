@@ -57,11 +57,13 @@ class InterlockSensor:
                  port: str = "/dev/ttyUSB0",
                  baudrate: int = 19200,
                  timeout: float = 1.5,
-                 pre_delay: float = 0.03):
+                 pre_delay: float = 0.03,
+                 name: str = "interlock"):
 
         self.sensor_id = sensor_address
         self.sensor_address = sensor_address
         self.sensor_type = "interlock"
+        self.name = name
         self.pre_delay = pre_delay
         self.max_retries = 3    # maximum number of retries for reading
         self.retry_delay = 0.5  # delay between retries in seconds
@@ -86,58 +88,147 @@ class InterlockSensor:
 
     def read_values(self) -> dict:
         """
-        Return a dictionary with CO2, temperature, and humidity readings.
+        Return a dictionary with HLR sensor readings.
         Returns:
         {
-            "co2": 0,               # No CO2 reading for Type K sensor
-            "temperature": float,   # Temperature in °C 1 digit
-            "humidity": 0.0         # No Humidity reading for Type K sensor
-            "sensor_id": int,       # Sensor ID
-            "sensor_type": "type_k" # Sensor type
+            "sensor_id": int,
+            "sensor_type": str,
+            "payload": JSON object
+        }
+        
+        Payload format : {
+            "temperature_before_filter": float,  # Temperature in °C
+            "fan_speed": float,                   # Fan speed in %
+            "temperature": float,            # Duct temperature in °C
+            "humid": float,               # Duct humidity in %RH
+            "co2": int,                      # Duct CO2 in ppm
+            "voc": float,                    # Duct VOC in %LV
+            "operation_mode": int             # 0-5 (Manual/Standby/Scrubbing/Regeneration/Cooldown/Alarming)
         }
         """
+        data = {
+            "sensor_id" : self.name,
+            "sensor_type" : self.sensor_type,
+            "payload" : {}
+        }
+
+        payload = {}
 
         if not self.instrument:
             logger.error("Minimal MODBUS Instrument not initialized.")
-            return {"co2": None, "temperature": None, "humidity": None}
+            payload = {
+                "temperature_before_filter": None,
+                "fan_speed": None,
+                "temperature": None,
+                "humid": None,
+                "co2": None,
+                "voc": None,
+                "operation_mode": None
+            }
+            
+            data["payload"] = payload
+            return data
 
         retries = 0
         while retries < self.max_retries:
-            retries +=1
+            retries += 1
             try:
                 with RS485BusManager.access(self.instrument.serial.port, self.pre_delay):
 
-                    co2 = 0
+                    # Read Temperature Before Filter Value (40001) - INT16 with 0.1x multiplier
+                    temp_before_filter_raw = self.instrument.read_register(
+                        registeraddress=self.MODBUS_ADDRESS["ADDR_TEMP_BEFORE_FILTER"],
+                        functioncode=self.MODBUS_ADDRESS["FUNCTION_CODE"],
+                        signed=True)
+                    temperature_before_filter = temp_before_filter_raw * 0.1
 
-                    temperature = self.instrument.read_register(
-                        registeraddress=self.MODBUS_ADDRESS["ADDR_TEMP"],
-                        functioncode=self.MODBUS_ADDRESS["FUNCTION_CODE"])
+                    # Read Fan Speed (40003) - INT16 with 1.0x multiplier
+                    fan_speed = self.instrument.read_register(
+                        registeraddress=self.MODBUS_ADDRESS["ADDR_FAN_SPEED"],
+                        functioncode=self.MODBUS_ADDRESS["FUNCTION_CODE"],
+                        signed=True) * 1.0
 
-                    humidity = 0
+                    # Read Duct Temperature (40004) - INT16 with 0.1x multiplier
+                    duct_temp_raw = self.instrument.read_register(
+                        registeraddress=self.MODBUS_ADDRESS["ADDR_DUCT_TEMP"],
+                        functioncode=self.MODBUS_ADDRESS["FUNCTION_CODE"],
+                        signed=True)
+                    duct_temperature = duct_temp_raw * 0.1
+
+                    # Read Duct Humidity (40005) - INT16 with 0.1x multiplier
+                    duct_humid_raw = self.instrument.read_register(
+                        registeraddress=self.MODBUS_ADDRESS["ADDR_DUCT_HUMID"],
+                        functioncode=self.MODBUS_ADDRESS["FUNCTION_CODE"],
+                        signed=True)
+                    duct_humidity = duct_humid_raw * 0.1
+
+                    # Read Duct CO2 (40006) - INT16 with 1.0x multiplier
+                    duct_co2 = self.instrument.read_register(
+                        registeraddress=self.MODBUS_ADDRESS["ADDR_DUCT_CO2"],
+                        functioncode=self.MODBUS_ADDRESS["FUNCTION_CODE"],
+                        signed=True) * 1.0
+
+                    # Read Duct VOC (40007) - INT16 with 0.1x multiplier
+                    duct_voc_raw = self.instrument.read_register(
+                        registeraddress=self.MODBUS_ADDRESS["ADDR_DUCT_VOC"],
+                        functioncode=self.MODBUS_ADDRESS["FUNCTION_CODE"],
+                        signed=True)
+                    duct_voc = duct_voc_raw * 0.1
+
+                    # Read HLR Operation Mode (40009) - INT16 with 1.0x multiplier
+                    hlr_operation_mode = self.instrument.read_register(
+                        registeraddress=self.MODBUS_ADDRESS["ADDR_HLR_OPERATION_MODE"],
+                        functioncode=self.MODBUS_ADDRESS["FUNCTION_CODE"],
+                        signed=True) * 1.0
 
                 logger.info(f"Sensor {self.sensor_id} Readings -")
-                logger.info(f"CO2: {co2} ppm, Temperature: {temperature} °C, Humidity: {humidity} %")
+                logger.info(f"Temp Before Filter: {temperature_before_filter}°C, Fan Speed: {fan_speed}%, "
+                           f"Duct Temp: {duct_temperature}°C, Duct Humidity: {duct_humidity}%RH, "
+                           f"Duct CO2: {duct_co2}ppm, Duct VOC: {duct_voc}%LV, "
+                           f"Operation Mode: {hlr_operation_mode}")
 
-                return {
-                    "co2": round(co2, 2),
-                    "temperature": round(temperature/10, 2),
-                    "humidity": round(humidity, 2),
-                    "sensor_id": self.sensor_id,
-                    "sensor_type": self.sensor_type
+                payload =  {
+                    "temp_before_filter": round(temperature_before_filter, 2),
+                    "fan_speed": round(fan_speed, 2),
+                    "temperature": round(duct_temperature, 2),
+                    "humid": round(duct_humidity, 2),
+                    "co2": int(duct_co2),
+                    "voc": round(duct_voc, 2),
+                    "operation_mode": int(hlr_operation_mode),
                 }
+
+                data["payload"] = payload
+                return data
+            
             except Exception as e:
                 logger.error(f"Attempt {retries} - Failed to read from sensor {self.sensor_id}: {e}")
                 time.sleep(self.retry_delay)
 
         # All attempts failed
         logger.error(f"All {self.max_retries} attempts failed for sensor {self.sensor_id}. Returning None values.")
-        return {"co2": None, "temperature": None, "humidity": None}
+                
+        payload = {
+            "temperature_before_filter": None,
+            "fan_speed": None,
+            "temperature": None,
+            "humid": None,
+            "co2": None,
+            "voc": None,
+            "operation_mode": None
+        }
+        data["payload"] = payload
+
+        return data
 
     def _get_address(self) -> dict:
-        """Get the Modbus address of the sensor based on sensor type."""
+        """Get the Modbus address of the interlock sensor registers."""
         return {
-                "ADDR_CO2": 0,
-                "ADDR_TEMP": 0,
-                "ADDR_HUMID": 0,
-                "FUNCTION_CODE": 3
-            }
+            "ADDR_TEMP_BEFORE_FILTER": 0,   # 40001
+            "ADDR_FAN_SPEED": 2,            # 40003
+            "ADDR_DUCT_TEMP": 3,            # 40004
+            "ADDR_DUCT_HUMID": 4,           # 40005
+            "ADDR_DUCT_CO2": 5,             # 40006
+            "ADDR_DUCT_VOC": 6,             # 40007
+            "ADDR_HLR_OPERATION_MODE": 8,   # 40009
+            "FUNCTION_CODE": 3              # 03: HOLDING register
+        }

@@ -61,11 +61,13 @@ class TongdySensor:
                  baudrate: int = 19200,
                  timeout: float = 1.5,
                  is_VOC: bool = False,
-                 pre_delay: float = 0.03):
+                 pre_delay: float = 0.03,
+                 name: str = "tongdy"):
 
         self.sensor_id = sensor_address
         self.sensor_address = sensor_address
         self.sensor_type = "tongdy"
+        self.name = name
         self.is_VOC = is_VOC
         self.pre_delay = pre_delay
         self.max_retries = 3    # maximum number of retries for reading
@@ -91,19 +93,35 @@ class TongdySensor:
 
     def read_values(self) -> dict:
         """
-        Return a dictionary with CO2, temperature, and humidity readings.
+        Return a dictionary with HLR sensor readings.
         Returns:
         {
-            "co2": int,          # CO2 concentration in ppm
-            "temperature": float, # Temperature in °C 2 digit
-            "humidity": float     # Relative Humidity in % 2 digit
+            "sensor_id": int,
+            "sensor_type": str,
+            "payload": JSON object
+        }
+        
+        Payload format : {
+            "temperature": float,       # Temperature in °C
+            "humid": float,             # Humidity in %RH
+            "co2": float,                 # CO2 in ppm
         }
         """
 
+        data = {
+            "sensor_id" : self.name,
+            "sensor_type" : self.sensor_type,
+            "payload" : {}
+        }
+
+        payload = {}
+
         if not self.instrument:
             logger.error("Minimal MODBUS Instrument not initialized.")
-            return {"co2": None, "temperature": None, "humidity": None}
-
+            payload =  {"co2": None, "temperature": None, "humid": None}
+            data["payload"] = payload
+            return data
+        
         retries = 0
         while retries < self.max_retries:
             retries +=1
@@ -128,20 +146,23 @@ class TongdySensor:
                 logger.info(f"Sensor {self.sensor_id} Readings -")
                 logger.info(f"CO2: {co2} ppm, Temperature: {temperature} °C, Humidity: {humidity} %")
 
-                return {
+                payload = {
                     "co2": round(co2, 2),
                     "temperature": round(temperature, 2),
-                    "humidity": round(humidity, 2),
-                    "sensor_id": self.sensor_id,
-                    "sensor_type": self.sensor_type
+                    "humid": round(humidity, 2),
                 }
+                data["payload"] = payload
+                return data
+
             except Exception as e:
                 logger.error(f"Attempt {retries} - Failed to read from sensor {self.sensor_id}: {e}")
                 time.sleep(self.retry_delay)
 
         # All attempts failed
         logger.error(f"All {self.max_retries} attempts failed for sensor {self.sensor_id}. Returning None values.")
-        return {"co2": None, "temperature": None, "humidity": None}
+        payload = {"co2": None, "temperature": None, "humid": None}
+        data["payload"] = payload
+        return data
 
     def _get_address(self, is_VOC: bool = False) -> dict:
         """Get the Modbus address of the sensor based on sensor type."""
