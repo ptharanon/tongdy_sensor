@@ -46,7 +46,8 @@ def create_mock_poller(
     polling_jitter: tuple = (0.02, 0.08),
     sensor_type: Literal['stable', 'noisy', 'unreliable', 'extreme'] = 'stable',
     num_sensors: int = 2,
-    use_voc: bool = True
+    use_voc: bool = True,
+    include_interlock: bool = True
 ) -> SensorPoller:
     """
     Create a SensorPoller with mock sensors for testing.
@@ -60,8 +61,9 @@ def create_mock_poller(
             - 'noisy': Realistic noise and drift
             - 'unreliable': Occasional failures (15% rate)
             - 'extreme': Extreme values for edge case testing
-        num_sensors: Number of mock sensors to create
+        num_sensors: Number of TongDy mock sensors to create
         use_voc: Whether to include a VOC sensor
+        include_interlock: Whether to include a mock interlock sensor (default: True)
     
     Returns:
         SensorPoller instance with mock sensors
@@ -85,17 +87,28 @@ def create_mock_poller(
     )
     
     # Replace sensors with mocks
-    mock_sensors = create_mock_sensors(
-        sensor_type=sensor_type,
-        num_sensors=num_sensors,
-        use_voc=use_voc
-    )
+    if include_interlock:
+        mock_sensors = create_mock_sensors_with_interlock(
+            sensor_type=sensor_type,
+            num_sensors=num_sensors,
+            use_voc=use_voc
+        )
+    else:
+        mock_sensors = create_mock_sensors(
+            sensor_type=sensor_type,
+            num_sensors=num_sensors,
+            use_voc=use_voc
+        )
     
     poller.sensors = mock_sensors
     
+    sensor_types = "TongDy sensors"
+    if include_interlock:
+        sensor_types += " + Interlock sensor"
+    
     logger.info(
         f"Created mock SensorPoller with {len(mock_sensors)} "
-        f"{sensor_type} sensors"
+        f"{sensor_type} sensors ({sensor_types})"
     )
     
     return poller

@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
-port = os.getenv("MODBUS_PORT", "/dev/ttyUSB0")
+port = os.getenv("MODBUS_PORT", "/dev/tty.usbserial-AB0OIIMZ")
 
 
 # Sensor Poller class
