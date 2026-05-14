@@ -8,13 +8,19 @@ from dotenv import load_dotenv
 from queue import Queue
 
 try:
-    from .tongdy_sensor import TongdySensor
-    from .type_k_sensor import TypeKSensor
-    from .interlock_sensor import InterlockSensor
+    # from .tongdy_sensor import TongdySensor
+    # from .type_k_sensor import TypeKSensor
+    # from .interlock_sensor import InterlockSensor
+    # from .cpac_humidity_sensor import CPACHumiditySensor
+    from cpac_humidity_sensor import CPACHumiditySensor
+# except ImportError:
+#     from tongdy_sensor.tongdy_sensor import TongdySensor
+#     from tongdy_sensor.type_k_sensor import TypeKSensor
+#     from tongdy_sensor.interlock_sensor import InterlockSensor
+#     from tongdy_sensor.cpac_humidity_sensor import CPACHumiditySensor
 except ImportError:
-    from tongdy_sensor import TongdySensor
-    from type_k_sensor import TypeKSensor
-    from interlock_sensor import InterlockSensor
+    print("Failed to import sensor classes. Please check your module structure and imports.")
+    raise
 
 # Configure logging
 logging.basicConfig(
@@ -25,21 +31,25 @@ logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
-port = os.getenv("MODBUS_PORT", "/dev/tty.usbserial-AB0OIIMZ")
+port = os.getenv("MODBUS_PORT", "/dev/tty.usbserial-BG00Q91A")
 
 
 # Sensor Poller class
 class SensorPoller:
 
     def __init__(self,
-                 polling_interval: int = 60,
+                 polling_interval: int = 1,
                  polling_jitter: tuple = (0.02, 0.08),
                  ui_queue: Queue = Queue()):
 
+        # self.sensors = [
+        #     TongdySensor(sensor_address=11, port=port, is_VOC=False, name="before_scrub"),
+        #     TongdySensor(sensor_address=13, port=port, is_VOC=False, name="after_scrub"),
+        #     InterlockSensor(sensor_address=1, port=port, name="interlock_4c")
+        # ]
+
         self.sensors = [
-            TongdySensor(sensor_address=11, port=port, is_VOC=False, name="before_scrub"),
-            TongdySensor(sensor_address=13, port=port, is_VOC=False, name="after_scrub"),
-            InterlockSensor(sensor_address=1, port=port, name="interlock_4c")
+            CPACHumiditySensor(sensor_address=1, port=port, name="cpac_humidity_1"),
         ]
 
         self.polling_interval = polling_interval

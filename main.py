@@ -29,11 +29,11 @@ while True:
         data = queue.get()
         print(f"\n--- Full Data Object ---")
         print(data)
-        print(f"--- Parsed ---")
-        print(f"Sensor {data['sensor_id']} ({data['sensor_type']}): "
-              f"CO2={data['payload']['co2']}, "
-              f"Temp={data['payload']['temperature']}, "
-              f"RH={data['payload']['humid']}")
+        # print(f"--- Parsed ---")
+        # print(f"Sensor {data['sensor_id']} ({data['sensor_type']}): "
+        #       f"CO2={data['payload']['co2']}, "
+        #       f"Temp={data['payload']['temperature']}, "
+        #       f"RH={data['payload']['humid']}")
     time.sleep(1)
 
 # Stop when done
