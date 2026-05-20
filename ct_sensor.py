@@ -1,15 +1,21 @@
 """
-Read Modbus RTU registers from a VMS-3001 RS485 4-channel analog input module.
+Read Modbus RTU current registers from a ME231 three-phase multifunctional smart meter.
 
 Register map (holding registers, function code 0x03):
-  0x0000 (40001) - Channel 1 analog value  (0-4095)
-  0x0001 (40002) - Channel 2 analog value  (0-4095)
-  0x0002 (40003) - Channel 3 analog value  (0-4095)
-  0x0003 (40004) - Channel 4 analog value  (0-4095)
-  0x07D0 (42001) - Device address          (1-254, default 1)
-  0x07D1 (42002) - Baud rate               (0=2400, 1=4800, 2=9600, 3=19200,
-                                            4=38400, 5=57600, 6=115200, default 1)
-REF Datasheet provided by P'Ya
+  0x03E8 (1000) - Phase L1 current value    Float32, 2 registers, unit: A
+  0x03EA (1002) - Phase L2 current value    Float32, 2 registers, unit: A
+  0x03EC (1004) - Phase L3 current value    Float32, 2 registers, unit: A
+  0x03EE (1006) - Average current value     Float32, 2 registers, unit: A
+  0x03F0 (1008) - Neutral phase current IN  Float32, 2 registers, unit: A
+
+Notes:
+  - Use function code 0x03 to read holding registers.
+  - Each current value is a 32-bit floating point value.
+  - Each Float32 value occupies 2 Modbus registers.
+  - To read L1, L2, and L3 currents together, start at address 1000 and read 6 registers.
+  - Register addresses are decimal actual Modbus addresses from the datasheet.
+
+REF Datasheet https://assets.temcocontrols.com/products/three_phase_multifunction_smart_meter/me231/ME231-Manual-1.pdf
 """
 
 import logging
@@ -67,8 +73,8 @@ class RS485BusManager:
         return _Ctx()
 
 
-# MARK: CPAC HUMIDITY SENSOR CLASS
-class CPACHumiditySensor:
+# MARK: CT SENSOR CLASS
+class CTSensor:
     def __init__(self,
                  sensor_address: int,
                  port: str = "/dev/ttyUSB0",
@@ -79,7 +85,7 @@ class CPACHumiditySensor:
 
         self.sensor_id = sensor_address
         self.sensor_address = sensor_address
-        self.sensor_type = "cpac_humidity"
+        self.sensor_type = "ct_sensor"
         self.name = name
         self.pre_delay = pre_delay
         self.max_retries = 3    # maximum number of retries for reading
@@ -97,25 +103,27 @@ class CPACHumiditySensor:
             self.instrument.clear_buffers_before_each_transaction = True
             self.instrument.close_port_after_each_call = False
 
-            logger.info(f"CPAC Humidity sensor connected on port {port} with address {sensor_address}")
+            logger.info(f"CT sensor connected on port {port} with address {sensor_address}")
 
         except Exception as e:
-            logger.exception(f"Failed to initialize CPAC Humidity sensor on port {port} with address {sensor_address}: {e}")
+            logger.exception(f"Failed to initialize CT sensor on port {port} with address {sensor_address}: {e}")
             self.instrument = None
 
     def read_values(self) -> dict:
         """
-        Return a dictionary with CO2, temperature, and humidity readings.
+        Return a dictionary with current readings.
         Returns:
         {
-            "humidity": 0.0,        # Humidity reading for CPAC Humidity sensor (mA output, 4-20mA)
+            "current_phase1": 0.0,        # Phase 1 Current reading for CT sensor (A output)
+            "current_phase2": 0.0,        # Phase 2 Current reading for CT sensor (A output)
+            "current_phase3": 0.0,        # Phase 3 Current reading for CT sensor (A output)
             "sensor_id": int,       # Sensor ID
-            "sensor_type": "cpac_humidity" # Sensor type
+            "sensor_type": "ct_sensor" # Sensor type
         }
         """
         if not self.instrument:
             logger.error("Minimal MODBUS Instrument not initialized.")
-            return {"humidity": None, "sensor_id": self.sensor_id, "sensor_type": self.sensor_type}
+            return {"current_phase1": None, "current_phase2": None, "current_phase3": None, "sensor_id": self.sensor_id, "sensor_type": self.sensor_type}
 
         retries = 0
         while retries < self.max_retries:
@@ -124,18 +132,34 @@ class CPACHumiditySensor:
                 port = self.instrument.serial.port or ""  # type: ignore[union-attr]
                 with RS485BusManager.access(port, self.pre_delay):
 
-                    humidity = self.instrument.read_register(
-                        registeraddress=self.MODBUS_ADDRESS["ADDR_HUMID"],
-                        functioncode=self.MODBUS_ADDRESS["FUNCTION_CODE"])
+                    current_phase1 = self.instrument.read_float(
+                        registeraddress=self.MODBUS_ADDRESS["ADDR_PHASE1"],
+                        functioncode=self.MODBUS_ADDRESS["FUNCTION_CODE"],
+                        number_of_registers=2)
 
-                    humidity = humidity/4095 * 20 # Convert 0-4095 to 0-20mA
-                    humidity = round(humidity, 2)
+                    current_phase2 = self.instrument.read_float(
+                        registeraddress=self.MODBUS_ADDRESS["ADDR_PHASE2"],
+                        functioncode=self.MODBUS_ADDRESS["FUNCTION_CODE"],
+                        number_of_registers=2)
+
+                    current_phase3 = self.instrument.read_float(
+                        registeraddress=self.MODBUS_ADDRESS["ADDR_PHASE3"],
+                        functioncode=self.MODBUS_ADDRESS["FUNCTION_CODE"],
+                        number_of_registers=2)
+
+                    current_phase1 = round(current_phase1, 2)
+                    current_phase2 = round(current_phase2, 2)
+                    current_phase3 = round(current_phase3, 2)
                     
                 logger.info(f"Sensor {self.sensor_id} Readings -")
-                logger.info(f"Humidity: {humidity} mA")
+                logger.info(f"Current Phase 1: {current_phase1} A")
+                logger.info(f"Current Phase 2: {current_phase2} A")
+                logger.info(f"Current Phase 3: {current_phase3} A")
 
                 return {
-                    "humidity": humidity,
+                    "current_phase1": current_phase1,
+                    "current_phase2": current_phase2,
+                    "current_phase3": current_phase3,
                     "sensor_id": self.sensor_id,
                     "sensor_type": self.sensor_type
                 }
@@ -145,11 +169,13 @@ class CPACHumiditySensor:
 
         # All attempts failed
         logger.error(f"All {self.max_retries} attempts failed for sensor {self.sensor_id}. Returning None values.")
-        return {"humidity": None, "sensor_id": self.sensor_id, "sensor_type": self.sensor_type}
+        return {"current_phase1": None, "current_phase2": None, "current_phase3": None, "sensor_id": self.sensor_id, "sensor_type": self.sensor_type}
 
     def _get_address(self) -> dict:
         """Get the Modbus address of the sensor based on sensor type."""
         return {
-            "ADDR_HUMID": 0,
+            "ADDR_PHASE1": 1000,
+            "ADDR_PHASE2": 1002,
+            "ADDR_PHASE3": 1004,
             "FUNCTION_CODE": 3
         }
