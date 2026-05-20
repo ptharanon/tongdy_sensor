@@ -13,6 +13,7 @@ try:
     # from .interlock_sensor import InterlockSensor
     # from .cpac_humidity_sensor import CPACHumiditySensor
     from cpac_humidity_sensor import CPACHumiditySensor
+    from ct_sensor import CTSensor
 # except ImportError:
 #     from tongdy_sensor.tongdy_sensor import TongdySensor
 #     from tongdy_sensor.type_k_sensor import TypeKSensor
@@ -50,6 +51,7 @@ class SensorPoller:
 
         self.sensors = [
             CPACHumiditySensor(sensor_address=1, port=port, name="cpac_humidity_1"),
+            CTSensor(sensor_address=2, port=port, name="ct_sensor_1")
         ]
 
         self.polling_interval = polling_interval

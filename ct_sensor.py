@@ -114,9 +114,9 @@ class CTSensor:
         Return a dictionary with current readings.
         Returns:
         {
-            "current_phase1": 0.0,        # Phase 1 Current reading for CT sensor (A output)
-            "current_phase2": 0.0,        # Phase 2 Current reading for CT sensor (A output)
-            "current_phase3": 0.0,        # Phase 3 Current reading for CT sensor (A output)
+            "current_phase1": 0.00,        # Phase 1 Current reading for CT sensor (A output)
+            "current_phase2": 0.00,        # Phase 2 Current reading for CT sensor (A output)
+            "current_phase3": 0.00,        # Phase 3 Current reading for CT sensor (A output)
             "sensor_id": int,       # Sensor ID
             "sensor_type": "ct_sensor" # Sensor type
         }
