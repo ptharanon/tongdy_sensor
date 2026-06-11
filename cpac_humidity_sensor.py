@@ -109,13 +109,14 @@ class CPACHumiditySensor:
         Returns:
         {
             "humidity": 0.0,        # Humidity reading for CPAC Humidity sensor (mA output, 4-20mA)
+            "temperature": 0.0 ,    # Temperature reading for CPAC Humidity sensor (mA output, 4-20mA)
             "sensor_id": int,       # Sensor ID
             "sensor_type": "cpac_humidity" # Sensor type
         }
         """
         if not self.instrument:
             logger.error("Minimal MODBUS Instrument not initialized.")
-            return {"humidity": None, "sensor_id": self.sensor_id, "sensor_type": self.sensor_type}
+            return {"humidity": None, "temperature": None, "sensor_id": self.sensor_id, "sensor_type": self.sensor_type}
 
         retries = 0
         while retries < self.max_retries:
@@ -130,12 +131,21 @@ class CPACHumiditySensor:
 
                     humidity = humidity/4095 * 20 # Convert 0-4095 to 0-20mA
                     humidity = round(humidity, 2)
+
+                    temperature = self.instrument.read_register(
+                        registeraddress=self.MODBUS_ADDRESS["ADDR_TEMP"],
+                        functioncode=self.MODBUS_ADDRESS["FUNCTION_CODE"])
+                    
+                    temperature = temperature/4095 * 20 # Convert 0-4095 to 0-20mA
+                    temperature = round(temperature, 2)
                     
                 logger.info(f"Sensor {self.sensor_id} Readings -")
                 logger.info(f"Humidity: {humidity} mA")
+                logger.info(f"Temperature: {temperature} mA")
 
                 return {
                     "humidity": humidity,
+                    "temperature": temperature,
                     "sensor_id": self.sensor_id,
                     "sensor_type": self.sensor_type
                 }
@@ -145,11 +155,12 @@ class CPACHumiditySensor:
 
         # All attempts failed
         logger.error(f"All {self.max_retries} attempts failed for sensor {self.sensor_id}. Returning None values.")
-        return {"humidity": None, "sensor_id": self.sensor_id, "sensor_type": self.sensor_type}
+        return {"humidity": None, "temperature": None, "sensor_id": self.sensor_id, "sensor_type": self.sensor_type}
 
     def _get_address(self) -> dict:
         """Get the Modbus address of the sensor based on sensor type."""
         return {
             "ADDR_HUMID": 0,
+            "ADDR_TEMP": 1,
             "FUNCTION_CODE": 3
         }
