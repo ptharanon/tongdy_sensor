@@ -8,17 +8,8 @@ from dotenv import load_dotenv
 from queue import Queue
 
 try:
-    # from .tongdy_sensor import TongdySensor
-    # from .type_k_sensor import TypeKSensor
-    # from .interlock_sensor import InterlockSensor
-    # from .cpac_humidity_sensor import CPACHumiditySensor
-    from cpac_humidity_sensor import CPACHumiditySensor
-    from ct_sensor import CTSensor
-# except ImportError:
-#     from tongdy_sensor.tongdy_sensor import TongdySensor
-#     from tongdy_sensor.type_k_sensor import TypeKSensor
-#     from tongdy_sensor.interlock_sensor import InterlockSensor
-#     from tongdy_sensor.cpac_humidity_sensor import CPACHumiditySensor
+    from huawei_solar import HuaweiSolarSensor, DEFAULT_INVERTER_HOST
+    from temp_sensor import TemperatureSensor
 except ImportError:
     print("Failed to import sensor classes. Please check your module structure and imports.")
     raise
@@ -43,15 +34,22 @@ class SensorPoller:
                  polling_jitter: tuple = (0.02, 0.08),
                  ui_queue: Queue = Queue()):
 
-        # self.sensors = [
-        #     TongdySensor(sensor_address=11, port=port, is_VOC=False, name="before_scrub"),
-        #     TongdySensor(sensor_address=13, port=port, is_VOC=False, name="after_scrub"),
-        #     InterlockSensor(sensor_address=1, port=port, name="interlock_4c")
-        # ]
-
         self.sensors = [
-            CPACHumiditySensor(sensor_address=1, port=port, name="cpac_humidity_1"),
-            CTSensor(sensor_address=2, port=port, name="ct_sensor_1")
+            HuaweiSolarSensor(
+                mode="auto",  # Change to "auto" for real readings
+                transport="tcp",
+                host=DEFAULT_INVERTER_HOST,
+                tcp_port=502,
+                slave_id=2,
+                name="huawei_inverter_1",
+            ),
+            # TemperatureSensor(
+            #     mode="mockup",  # Change to "auto" for real readings
+            #     sensor_address=1,
+            #     port=port,
+            #     baudrate=9600,
+            #     name="temperature_sensor_1",
+            # )
         ]
 
         self.polling_interval = polling_interval

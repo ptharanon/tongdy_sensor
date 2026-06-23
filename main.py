@@ -27,8 +27,8 @@ time.sleep(6)
 while True:
     if not queue.empty():
         data = queue.get()
-        print(f"\n--- Full Data Object ---")
-        print(data)
+        # print(f"\n--- Full Data Object ---")
+        # print(data)
         # print(f"--- Parsed ---")
         # print(f"Sensor {data['sensor_id']} ({data['sensor_type']}): "
         #       f"CO2={data['payload']['co2']}, "
