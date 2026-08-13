@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from queue import Queue
 
 try:
-    from huawei_solar import HuaweiSolarSensor, DEFAULT_INVERTER_HOST
+    from huawei_solar import HuaweiSolarSensor, DEFAULT_INVERTER_HOST_KUNVO, DEFAULT_INVERTER_HOST_STD
     from temp_sensor import TemperatureSensor
 except ImportError:
     print("Failed to import sensor classes. Please check your module structure and imports.")
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
-port = os.getenv("MODBUS_PORT", "/dev/tty.usbserial-BG00Q91A")
+port = os.getenv("MODBUS_PORT", "/dev/tty.usbmodem594C0234411")
 
 
 # Sensor Poller class
@@ -38,16 +38,24 @@ class SensorPoller:
             HuaweiSolarSensor(
                 mode="auto",  # Change to "auto" for real readings
                 transport="tcp",
-                host=DEFAULT_INVERTER_HOST,
+                host=DEFAULT_INVERTER_HOST_KUNVO,
                 tcp_port=502,
                 slave_id=2,
                 name="huawei_inverter_1",
             ),
+            HuaweiSolarSensor(
+                mode="auto",  # Change to "auto" for real readings
+                transport="tcp",
+                host=DEFAULT_INVERTER_HOST_STD,
+                tcp_port=502,
+                slave_id=1,
+                name="huawei_inverter_2",
+            ),
             # TemperatureSensor(
-            #     mode="mockup",  # Change to "auto" for real readings
+            #     mode="auto",  # Change to "auto" for real readings
             #     sensor_address=1,
             #     port=port,
-            #     baudrate=9600,
+            #     baudrate=4800,
             #     name="temperature_sensor_1",
             # )
         ]

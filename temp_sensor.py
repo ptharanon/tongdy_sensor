@@ -78,7 +78,7 @@ class TemperatureSensor:
     def __init__(self,
                 mode: str = MODE_AUTO,
                 sensor_address: int = 1,
-                port: str = "/dev/ttyUSB0",
+                port: str = "/dev/tty.usbserial-BG00Y792",
                 baudrate: int = 4800,
                 timeout: float = 1.5,
                 pre_delay: float = 0.03,
@@ -161,11 +161,11 @@ class TemperatureSensor:
                         registeraddress=self.MODBUS_ADDRESS["ADDR_TEMP"],
                         functioncode=self.MODBUS_ADDRESS["FUNCTION_CODE"])
 
-                    temperature = temperature/4095 * 20 # Convert 0-4095 to 0-20mA
+                    temperature = temperature/4095 * 5 # Convert 0-4095 to 0-5V
                     temperature = round(temperature, 2)
                     
                 logger.info(f"Sensor {self.sensor_id} Readings -")
-                logger.info(f"Temperature: {temperature} mA")
+                logger.info(f"Temperature: {temperature} V")
 
                 return {
                     "temperature": temperature,
@@ -184,6 +184,6 @@ class TemperatureSensor:
         """Get the Modbus address of the sensor based on sensor type."""
         return {
             "ADDR_HUMID": 0,
-            "ADDR_TEMP": 1,
+            "ADDR_TEMP": 0,
             "FUNCTION_CODE": 3
         }

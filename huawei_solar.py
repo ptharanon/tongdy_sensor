@@ -23,7 +23,8 @@ from pymodbus.client import ModbusSerialClient, ModbusTcpClient
 logger = logging.getLogger(__name__)
 
 # Placeholder: replace with the dongle's real LAN IP once known.
-DEFAULT_INVERTER_HOST = "172.29.247.138"
+DEFAULT_INVERTER_HOST_KUNVO = "172.29.247.141"  # FIRST INVERTER IP (with device ID 2) # Kunvo
+DEFAULT_INVERTER_HOST_STD = "172.29.247.142"  # SECOND INVERTER IP (NEW with device ID 1) # STD
 
 DEFAULT_SERIAL_PORT = "/dev/ttyUSB0"
 
@@ -43,7 +44,7 @@ class HuaweiSolarSensor:
                 mode: str = MODE_AUTO,
                 transport: str = TRANSPORT_TCP,
                 # TCP parameters
-                host: str = DEFAULT_INVERTER_HOST,
+                host: str = DEFAULT_INVERTER_HOST_KUNVO,
                 tcp_port: int = 502,
                 # RTU (serial) parameters
                 serial_port: str = DEFAULT_SERIAL_PORT,
@@ -75,7 +76,7 @@ class HuaweiSolarSensor:
         self.tcp_port = tcp_port
         self.serial_port = serial_port
         self.slave_id = slave_id
-        self.sensor_id = slave_id
+        self.sensor_id = name
         self.sensor_address = slave_id
         self.sensor_type = "huawei_solar"
         self.name = name
